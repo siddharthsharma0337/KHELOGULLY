@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/app_models.dart';
 import '../services/api_service.dart';
-import 'enroll_screen.dart';
+// import 'enroll_screen.dart';
 
 /// Student Home Screen
 /// Shows: own profile, list of enrollments (a student can have more than
@@ -145,7 +145,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   _SectionHeader(
                     title: 'My Enrollments',
                     actionLabel: 'Enroll',
-                    onAction: () async {
+                    onAction: () {
+                      // TODO: Satyam forgot to push enroll_screen.dart
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enroll Screen coming soon (missing file)')),
+                      );
+                      /*
                       final enrolled = await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -156,6 +161,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       if (enrolled == true) {
                         _loadData();
                       }
+                      */
                     },
                   ),
                   const SizedBox(height: AppSpacing.md),
