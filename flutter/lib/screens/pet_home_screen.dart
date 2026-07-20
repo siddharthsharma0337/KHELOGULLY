@@ -28,7 +28,11 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          _PetDashboardTab(petName: widget.petName, onLogout: _handleLogout),
+          _PetDashboardTab(
+            petName: widget.petName,
+            onLogout: _handleLogout,
+            onSwitchTab: (i) => setState(() => _currentIndex = i),
+          ),
           const _RegisterStudentTab(),
           const _PetHistoryTab(),
         ],
@@ -55,8 +59,13 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
 class _PetDashboardTab extends StatelessWidget {
   final String petName;
   final VoidCallback onLogout;
+  final ValueChanged<int> onSwitchTab;
 
-  const _PetDashboardTab({required this.petName, required this.onLogout});
+  const _PetDashboardTab({
+    required this.petName,
+    required this.onLogout,
+    required this.onSwitchTab,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +135,7 @@ class _PetDashboardTab extends StatelessWidget {
                 children: [
                   Expanded(
                     child: GlassCard(
-                      onTap: () {},
+                      onTap: () => onSwitchTab(1), // → Register Student tab
                       child: Column(
                         children: [
                           Container(
@@ -152,7 +161,7 @@ class _PetDashboardTab extends StatelessWidget {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: GlassCard(
-                      onTap: () {},
+                      onTap: () => onSwitchTab(2), // → History/Batch test tab
                       child: Column(
                         children: [
                           Container(
@@ -167,7 +176,7 @@ class _PetDashboardTab extends StatelessWidget {
                                 color: Colors.white, size: 24),
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          Text('Run Test\n(Batch)',
+                          Text('View\nHistory',
                               textAlign: TextAlign.center,
                               style: AppTextStyles.cardSubtitle
                                   .copyWith(fontWeight: FontWeight.w600)),
@@ -178,7 +187,28 @@ class _PetDashboardTab extends StatelessWidget {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: GlassCard(
-                      onTap: () {},
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Sync Results'),
+                            content: const Text(
+                              'All locally stored test results will be uploaded to the server. '
+                              'Make sure you have an internet connection before syncing.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Sync Now'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                       child: Column(
                         children: [
                           Container(

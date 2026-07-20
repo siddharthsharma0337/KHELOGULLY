@@ -15,6 +15,7 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _currentIndex = 0;
   bool _isLoading = true;
+  String? _loadError;
   List<EnrollmentModel> _enrollments = [];
   List<TestResultModel> _scores = [];
 
@@ -25,13 +26,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final enrollRes = await ApiService.instance.get('/student/enrollments');
       final enrollData = ApiService.instance.unwrap(enrollRes);
+      // Show ALL enrollments — do not filter by status so user sees full history
       _enrollments = (enrollData as List)
           .map((e) => EnrollmentModel.fromJson(e as Map<String, dynamic>))
-          .where((e) => e.status == 'active')
           .toList();
 
       final scoresRes = await ApiService.instance.get('/student/scores');
@@ -40,11 +44,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           .map((s) => TestResultModel.fromJson(s as Map<String, dynamic>))
           .toList();
     } on ApiException catch (e) {
+      if (mounted) setState(() => _loadError = e.message);
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        setState(() => _loadError = 'Network error — check your connection and try again.');
       }
-    } catch (_) {}
+    }
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -266,7 +271,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          if (_enrollments.isEmpty)
+          if (_loadError != null)
+            _ErrorBody(message: _loadError!, onRetry: _loadData)
+          else if (_enrollments.isEmpty)
             _EmptyState(
               icon: Icons.location_on_outlined,
               message:
@@ -277,7 +284,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: _EnrollmentTile(
                     enrollment: e,
-                    onWithdraw: () => _handleWithdraw(e),
+                    onWithdraw: e.status == 'active'
+                        ? () => _handleWithdraw(e)
+                        : null,
                   ),
                 )),
         ],
@@ -333,14 +342,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       backgroundColor: AppColors.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : IndexedStack(
-              index: _currentIndex,
-              children: [
-                _buildDashboard(),
-                _buildEnrollments(),
-                _buildScores(),
-              ],
-            ),
+          : _loadError != null
+              ? _ErrorBody(
+                  message: _loadError!,
+                  onRetry: _loadData,
+                )
+              : IndexedStack(
+                  index: _currentIndex,
+                  children: [
+                    _buildDashboard(),
+                    _buildEnrollments(),
+                    _buildScores(),
+                  ],
+                ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
@@ -394,10 +408,23 @@ class _StatChip extends StatelessWidget {
 
 class _EnrollmentTile extends StatelessWidget {
   final EnrollmentModel enrollment;
-  final VoidCallback onWithdraw;
+  final VoidCallback? onWithdraw; // nullable — null means non-withdrawable status
 
   const _EnrollmentTile(
       {required this.enrollment, required this.onWithdraw});
+
+  Color get _statusColor {
+    switch (enrollment.status) {
+      case 'active':
+        return AppColors.success;
+      case 'inactive':
+        return AppColors.textSecondary;
+      case 'completed':
+        return AppColors.primary;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
 
   @override
   Widget build(BuildContext context) => GlassCard(
@@ -406,11 +433,11 @@ class _EnrollmentTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.roleStudent.withValues(alpha: 0.1),
+                color: _statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: const Icon(Icons.location_on_rounded,
-                  color: AppColors.roleStudent, size: 20),
+              child: Icon(Icons.location_on_rounded,
+                  color: _statusColor, size: 20),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -419,19 +446,42 @@ class _EnrollmentTile extends StatelessWidget {
                 children: [
                   Text(enrollment.schoolOrRegion,
                       style: AppTextStyles.cardTitle),
-                  Text(
-                    'Active · Enrolled ${_formatDate(enrollment.enrolledAt)}',
-                    style: AppTextStyles.cardSubtitle,
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _statusColor.withValues(alpha: 0.12),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Text(
+                          enrollment.status.toUpperCase(),
+                          style: AppTextStyles.badge
+                              .copyWith(color: _statusColor),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDate(enrollment.enrolledAt),
+                        style: AppTextStyles.cardSubtitle,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: onWithdraw,
-              icon: const Icon(Icons.close_rounded, size: 20),
-              color: AppColors.textSecondary,
-              tooltip: 'Withdraw',
-            ),
+            if (onWithdraw != null)
+              IconButton(
+                onPressed: onWithdraw,
+                icon: const Icon(Icons.close_rounded, size: 20),
+                color: AppColors.textSecondary,
+                tooltip: 'Withdraw',
+              )
+            else
+              const SizedBox(width: 8),
           ],
         ),
       );
@@ -597,6 +647,52 @@ class _EnrollSheetState extends State<_EnrollSheet> {
                 : const Text('Confirm Enrollment'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Error Body ───────────────────────────────────────────────────────────────
+
+class _ErrorBody extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorBody({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.wifi_off_rounded,
+                  size: 40, color: AppColors.error),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text('Something went wrong', style: AppTextStyles.heading3),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.cardSubtitle,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
