@@ -16,11 +16,10 @@ class ApiService {
   static final ApiService instance = ApiService._internal();
 
   // ── Base URL configuration ────────────────────────────────────────────────
-  // For physical device on same WiFi: use your machine's local IP (not localhost)
-  // Your current local IP: 192.168.1.5
-  // For emulator: use 'http://10.0.2.2:5000/api/v1'
-  // For production (Render/Railway): use the deployed HTTPS URL
-  static const String baseUrl = 'http://192.168.1.5:5000/api/v1';
+  // Using localtunnel to expose local backend at a public HTTPS URL.
+  // Tunnel: https://angry-swans-glow.loca.lt → localhost:5000
+  // Note: localtunnel URL changes each restart. Update here if tunnel restarts.
+  static const String baseUrl = 'https://angry-swans-glow.loca.lt/api/v1';
 
   final _storage = const FlutterSecureStorage();
 
@@ -47,6 +46,8 @@ class ApiService {
     return {
       'Content-Type': 'application/json',
       'client_type': 'mobile',
+      // Required to bypass localtunnel's browser reminder page
+      'bypass-tunnel-reminder': 'true',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -132,9 +133,13 @@ class ApiService {
 
   Future<http.Response> delete(String path) => _request('DELETE', path);
 
-  /// Helper: unwraps `{ success, data }` and throws a readable message
+  /// Unwraps `{ success: true, data: <anything> }` and throws [ApiException]
   /// on `{ success: false, error: { message } }`.
-  Map<String, dynamic> unwrap(http.Response response) {
+  ///
+  /// Returns `dynamic` — callers cast to the correct type:
+  ///   - List endpoints: `ApiService.instance.unwrap(res) as List`
+  ///   - Object endpoints: `ApiService.instance.unwrap(res) as Map<String, dynamic>`
+  dynamic unwrap(http.Response response) {
     final decoded = jsonDecode(response.body);
     if (decoded['success'] == true) {
       return decoded['data'];
