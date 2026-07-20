@@ -1,9 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- ── Permissions ─────────────────────────────────────────────────── -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.CAMERA" />
-
+    <!-- INTERNET permission required for all API calls -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="KheloGully"
         android:name="${applicationName}"

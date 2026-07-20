@@ -15,11 +15,12 @@ class ApiService {
   ApiService._internal();
   static final ApiService instance = ApiService._internal();
 
-  // ── Base URL configuration ────────────────────────────────────────────────
-  // Using localtunnel to expose local backend at a public HTTPS URL.
-  // Tunnel: https://angry-swans-glow.loca.lt → localhost:5000
-  // Note: localtunnel URL changes each restart. Update here if tunnel restarts.
-  static const String baseUrl = 'https://angry-swans-glow.loca.lt/api/v1';
+  // ── Base URL ──────────────────────────────────────────────────────────────
+  // For physical Android device: use your PC's local IP on the same WiFi network.
+  // Run `ipconfig` in terminal to find your IPv4 address (e.g. 192.168.x.x).
+  // For Android emulator: use 10.0.2.2 instead of localhost.
+  // For production (Railway/Render): replace with the deployed URL.
+  static const String baseUrl = 'http://192.168.1.5:5000/api/v1';
 
   final _storage = const FlutterSecureStorage();
 
@@ -46,8 +47,6 @@ class ApiService {
     return {
       'Content-Type': 'application/json',
       'client_type': 'mobile',
-      // Required to bypass localtunnel's browser reminder page
-      'bypass-tunnel-reminder': 'true',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -133,12 +132,10 @@ class ApiService {
 
   Future<http.Response> delete(String path) => _request('DELETE', path);
 
-  /// Unwraps `{ success: true, data: <anything> }` and throws [ApiException]
+  /// Helper: unwraps `{ success, data }` and throws a readable message
   /// on `{ success: false, error: { message } }`.
-  ///
-  /// Returns `dynamic` — callers cast to the correct type:
-  ///   - List endpoints: `ApiService.instance.unwrap(res) as List`
-  ///   - Object endpoints: `ApiService.instance.unwrap(res) as Map<String, dynamic>`
+  /// Returns `dynamic` because some endpoints return a List (e.g. enrollments)
+  /// while others return a Map (e.g. auth/login).
   dynamic unwrap(http.Response response) {
     final decoded = jsonDecode(response.body);
     if (decoded['success'] == true) {
