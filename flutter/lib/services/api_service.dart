@@ -15,11 +15,12 @@ class ApiService {
   ApiService._internal();
   static final ApiService instance = ApiService._internal();
 
-  // TODO: Replace with your Railway deployed URL once live, e.g.:
-  // static const String baseUrl = 'https://khelogully-backend-production.up.railway.app/api/v1';
-  // For local testing use: 'http://10.0.2.2:5000/api/v1' (Android emulator)
-  //                     or 'http://localhost:5000/api/v1' (Flutter Web / Windows)
-  static const String baseUrl = 'https://khelogully-backend.onrender.com/api/v1';
+  // ── Base URL configuration ────────────────────────────────────────────────
+  // For physical device on same WiFi: use your machine's local IP (not localhost)
+  // Your current local IP: 192.168.1.5
+  // For emulator: use 'http://10.0.2.2:5000/api/v1'
+  // For production (Render/Railway): use the deployed HTTPS URL
+  static const String baseUrl = 'http://192.168.1.5:5000/api/v1';
 
   final _storage = const FlutterSecureStorage();
 
