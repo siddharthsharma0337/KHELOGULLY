@@ -20,7 +20,7 @@ class ApiService {
   // Run `ipconfig` in terminal to find your IPv4 address (e.g. 192.168.x.x).
   // For Android emulator: use 10.0.2.2 instead of localhost.
   // For production (Railway/Render): replace with the deployed URL.
-  static const String baseUrl = 'http://192.168.1.5:5000/api/v1';
+  static const String baseUrl = 'https://khelogully-backend.onrender.com/api/v1';
 
   final _storage = const FlutterSecureStorage();
 
