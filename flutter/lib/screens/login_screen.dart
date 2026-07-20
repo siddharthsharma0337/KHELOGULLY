@@ -3,15 +3,13 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import 'student_home_screen.dart';
 import 'teacher_home_screen.dart';
+import 'pet_home_screen.dart';
 
-/// Login screen.
-///
-/// IMPORTANT: the backend's POST /auth/register does NOT return tokens —
-/// only POST /auth/login does. So every registration flow must end here,
-/// not skip straight to a home screen.
+/// Login screen — shared by all 3 roles.
+/// Backend POST /auth/login returns { user, accessToken, refreshToken }.
+/// Role determines which home screen to show after login.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.prefilledPhone});
-
   final String? prefilledPhone;
 
   @override
@@ -29,7 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _phoneController = TextEditingController(text: widget.prefilledPhone ?? '');
+    _phoneController =
+        TextEditingController(text: widget.prefilledPhone ?? '');
   }
 
   @override
@@ -39,9 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() async {
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
@@ -51,7 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       final data = ApiService.instance.unwrap(response);
-      // data = { user, accessToken, refreshToken }
       await ApiService.instance.saveTokens(
         accessToken: data['accessToken'],
         refreshToken: data['refreshToken'],
@@ -63,131 +60,200 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
+      Widget destination;
       if (role == 'student') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StudentHomeScreen(studentName: name),
-          ),
-        );
+        destination = StudentHomeScreen(studentName: name);
       } else if (role == 'teacher') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TeacherHomeScreen(
-              teacherName: name,
-              schoolOrRegion: user['schoolOrRegion'] ?? '',
-            ),
-          ),
+        destination = TeacherHomeScreen(
+          teacherName: name,
+          schoolOrRegion: user['schoolOrRegion'] ?? '',
         );
       } else {
-        // 'pet' role — no dedicated home screen built yet.
-        // TODO: build PetHomeScreen (roster/school-mode) and route here.
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Logged in as PET — home screen not built yet')),
-        );
+        // 'pet' role — new dedicated home screen
+        destination = PetHomeScreen(petName: name);
       }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => destination),
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      _showError(e.message);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Network error: $e')),
-      );
+      _showError('Network error. Check your connection and try again.');
     }
 
     if (mounted) setState(() => _isLoading = false);
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Form(
-            key: _formKey,
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          // ── Compact gradient header ─────────────────────────────────────
+          GradientHeader(
+            colors: AppColors.primaryGradient,
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              MediaQuery.of(context).padding.top + AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Welcome back', style: AppTextStyles.heading2),
-                const SizedBox(height: AppSpacing.xs + 2),
-                const Text(
-                  'Log in with your phone number and password',
-                  style: AppTextStyles.subtitle,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                const Text(
-                  'Phone Number',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(hintText: 'Enter your phone number'),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Phone number is required';
-                    }
-                    return null;
-                  },
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: const Icon(Icons.arrow_back_rounded,
+                        color: Colors.white, size: 20),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-
-                const Text(
-                  'Password',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    hintText: 'Enter your password',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Password is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Log In'),
-                ),
+                Text('Welcome back 👋',
+                    style: AppTextStyles.heading1OnDark),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Log in to continue your fitness journey',
+                    style: AppTextStyles.subtitleOnDark),
               ],
             ),
           ),
-        ),
+
+          // ── Form ───────────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: AppSpacing.sm),
+                    _FieldLabel('Phone Number'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter your phone number',
+                        prefixIcon: Icon(Icons.phone_rounded, size: 20),
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty
+                              ? 'Phone number is required'
+                              : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    _FieldLabel('Password'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your password',
+                        prefixIcon:
+                            const Icon(Icons.lock_outline_rounded, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 20,
+                          ),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty
+                              ? 'Password is required'
+                              : null,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Log In'),
+                    ),
+
+                    const SizedBox(height: AppSpacing.xl),
+
+                    // Info card
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.15)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline_rounded,
+                              size: 18, color: AppColors.primary),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              'Works for all roles: PET, Student, and Teacher. '
+                              'You will be automatically redirected to your dashboard.',
+                              style: AppTextStyles.cardSubtitle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, style: AppTextStyles.label.copyWith(color: AppColors.textPrimary));
   }
 }

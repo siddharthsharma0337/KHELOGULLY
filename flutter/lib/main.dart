@@ -15,7 +15,10 @@ class KheloGullyApp extends StatelessWidget {
       title: 'KheloGully',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const RolePickerScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (_) => const RolePickerScreen(),
+      },
     );
   }
 }

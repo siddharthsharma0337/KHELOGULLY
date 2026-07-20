@@ -1,6 +1,7 @@
 /// Shared data models used across screens.
 /// These mirror the shapes described in the backend contract doc —
 /// keep them in sync with whatever Siddharth/Sanskriti finalize.
+library;
 
 class EnrollmentModel {
   final String id;

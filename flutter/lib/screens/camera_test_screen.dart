@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -284,7 +283,7 @@ class _CameraTestScreenState extends State<CameraTestScreen>
                               vertical: AppSpacing.sm,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.65),
+                              color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(AppRadius.xl),
                             ),
                             child: Text(
@@ -311,7 +310,7 @@ class _CameraTestScreenState extends State<CameraTestScreen>
                                 horizontal: AppSpacing.md,
                                 vertical: AppSpacing.xs),
                             decoration: BoxDecoration(
-                              color: _statusColor.withOpacity(0.85),
+                              color: _statusColor.withValues(alpha: 0.85),
                               borderRadius:
                                   BorderRadius.circular(AppRadius.sm),
                             ),
@@ -391,8 +390,8 @@ class _CameraTestScreenState extends State<CameraTestScreen>
 /// Uses elbow angle (push-ups) or hip angle (sit-ups) to detect
 /// extended → flexed → extended cycles, matching Shantanu's approach.
 
-class _RepResult {
-  const _RepResult({
+class RepResult {
+  const RepResult({
     required this.repCount,
     required this.message,
     required this.color,
@@ -413,7 +412,7 @@ class RepTracker {
     _wasExtended = true;
   }
 
-  _RepResult? handlePose(
+  RepResult? handlePose(
     List<PoseLandmarkPoint> landmarks,
     double frameWidth,
     double frameHeight,
@@ -441,7 +440,7 @@ class RepTracker {
         // Coming back up → count rep
         _repCount++;
         _wasExtended = true;
-        return _RepResult(
+        return RepResult(
           repCount: _repCount,
           message: '✅ Rep $_repCount counted!',
           color: AppColors.secondary,
@@ -456,7 +455,7 @@ class RepTracker {
       color = AppColors.textSecondary;
     }
 
-    return _RepResult(repCount: _repCount, message: msg, color: color);
+    return RepResult(repCount: _repCount, message: msg, color: color);
   }
 
   double _angle(Offset a, Offset b, Offset c) {
